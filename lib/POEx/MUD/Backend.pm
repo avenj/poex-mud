@@ -162,18 +162,18 @@ sub p_accept_conn {
 
   my $type;
 
-  my $type = $_[STATE] eq '_accept_conn_v6' ? AF_INET6 : AF_INET ;
+  my $type   = $_[STATE] eq '_accept_conn_v6' ? AF_INET6 : AF_INET ;
   my $p_addr = inet_ntop( $type, $p_addr );
 
   my $sock_pack = getsockname($sock);
-  ## FIXME 
+  ## FIXME
   my ($proto, $sockaddr, $sockport) = get_unpacked_addr($sock_pack);
   my $listener = $self->listeners->{$listener_id};
   my $wheel = POE::Wheel::ReadWrite->new(
     Handle => $sock,
     Filter => $self->filter,
-    InputEvent => 'p_sock_input',
-    ErrorEvent => 'p_sock_error',
+    InputEvent   => 'p_sock_input',
+    ErrorEvent   => 'p_sock_error',
     FlushedEvent => 'p_sock_flushed',
   );
 
