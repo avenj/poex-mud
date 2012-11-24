@@ -19,7 +19,7 @@ has port => (
   is       => 'ro',
 );
 
-has 'idle_allowed' => (
+has idle_allowed => (
   lazy => 1,
   isa  => Num,
   is   => 'ro',
@@ -37,7 +37,7 @@ has protocol => (
   },
 );
 
-has 'wheel_id' => (
+has wheel_id => (
   lazy      => 1,
   isa       => Defined,
   is        => 'ro',
@@ -45,7 +45,7 @@ has 'wheel_id' => (
   predicate => 'has_wheel_id',
 );
 
-has 'wheel' => (
+has wheel => (
   required  => 1,
   isa       => InstanceOf['POE::Wheel'],
   is        => 'ro',

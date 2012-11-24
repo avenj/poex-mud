@@ -17,7 +17,7 @@ has 'alarm_id' => (
   default   => sub { 0 },
 );
 
-has 'allowed_idle' => (
+has 'idle_allowed' => (
   ## From Listener
   lazy    => 1,
   is      => 'rwp',
