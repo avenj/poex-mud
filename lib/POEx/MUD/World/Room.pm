@@ -6,8 +6,8 @@ use Carp;
 use Moo;
 
 use overload
-  'bool' => sub { 1 },
-  '""'   => 'id',
+  'bool'   => sub { 1 },
+  '""'     => 'id',
   fallback => 1;
 
 ## A Room belongs to a Map.
