@@ -40,6 +40,10 @@ sub mud_backend_registered {
   $self->set_backend( $backend );
 }
 
+sub mud_input {
+  ## FIXME
+}
+
 sub mud_listener_created {
   my ($kernel, $self) = @_[KERNEL, OBJECT];
   my $listener = $_[ARG0];

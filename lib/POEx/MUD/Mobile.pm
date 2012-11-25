@@ -20,6 +20,13 @@ has name => (
   predicate => 'has_name',
 );
 
+has is_reactive => (
+  ## FIXME need a clever way to handle mobile reactions
+  is  => rw,
+  isa => Bool,
+  default => sub { 0 },
+);
+
 has stats => (
   required  => 1,
   is        => 'ro',

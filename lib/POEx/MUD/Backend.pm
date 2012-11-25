@@ -1,6 +1,9 @@
 package POEx::MUD::Backend;
 our $VERSION = 0;
 
+## FIXME use an ascii-only custom filter that can
+##  set up an event object for us?
+
 use 5.10.1;
 use strictures 1;
 
@@ -346,21 +349,21 @@ sub p_idle_alarm {
 }
 
 sub p_sock_input {
-  my $self = $_[OBJECT];
+  my $self           = $_[OBJECT];
   my ($input, $w_id) = @_[ARG0, ARG1];
-  my $this_user = $self->users->{$w_id} || return;
+  my $this_user      = $self->users->{$w_id} || return;
 
   $this_user->seen( time );
   $poe_kernel->delay_adjust( $this_user->alarm_id, $this_user->idle_allowed )
     if $this_user->has_alarm_id;
 
-  ## FIXME do something with line input ...
+  ## FIXME send to mud_input .. custom filter?
 }
 
 sub p_sock_error {
-  my $self = $_[OBJECT];
+  my $self            = $_[OBJECT];
   my ($errstr, $w_id) = @_[ARG2, ARG3];
-  my $this_conn = $self->users->{$w_id} || return;
+  my $this_conn       = $self->users->{$w_id} || return;
   ## FIXME call disconnect/cleanup method
 }
 
