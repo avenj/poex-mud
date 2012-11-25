@@ -58,7 +58,6 @@ has _presence_desc => (
   lazy      => 1,
   is        => 'ro',
   isa       => ArrayRef,
-  ## Description(s) when present.
   writer    => 'set_presence_desc',
   predicate => 'has_presence_desc',
   builder   => '_build_presence_desc',
@@ -73,11 +72,11 @@ sub _build_presence_desc {
 sub get_presence_desc {
   my ($self) = @_;
 
-  join "\n",  map {;
-    templatef( $_,
-        name => $self->name,
-    )
-  } @{ $self->_presence_desc };
+  my @desc = @{ $self->_presence_desc };
+  my $selected = $desc[rand @desc];
+  templatef( $selected,
+      name => $self->name 
+  )
 }
 
 1;
