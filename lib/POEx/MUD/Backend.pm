@@ -116,6 +116,7 @@ sub spawn {
         _start
         _stop
 
+        p_accept_failed
         p_idle_alarm
         p_sock_input
         p_sock_error
@@ -152,9 +153,136 @@ sub p_shutdown {
   $self->clear_users;
 }
 
-sub p_send {}
-sub p_create_listener {}
-sub p_remove_listener {}
+sub send {
+  my $self = shift;
+  $poe_kernel->call( $self->session_id, 'send', @_ )
+  1
+}
+
+sub p_send {
+  my ($self, $to, @out) = @_[OBJECT, ARG0 .. $#_];
+  $self->users->{$to}->wheel->put($out)
+}
+
+sub p_create_listener {
+  my $self = $_[OBJECT];
+  my %args = @_[ARG0 .. $#_];
+  $args{lc $_} = delete $args{$_} for keys %args;
+
+  my $idle_allowed = delete $args{idle} || 300;
+  my $bindaddr     = delete $args{addr} || '0.0.0.0';
+  my $bindport     = delete $args{port} || 0;
+
+  my $proto = 4;
+  $proto = 5 if delete $args{ipv6} or ip_is_ipv6($bindaddr);
+
+  my $ssl = delete $args{ssl} || 0;
+
+  my $wheel = POE::Wheel::SocketFactory->new(
+    SocketDomain => ( $proto == 6 ? AF_INET6 : AF_INET ),
+    BindAddress  => $bindaddr,
+    BindPort     => $bindport,
+    SuccessEvent =>
+      ( $proto == 6 ? '_accept_conn_v6' : '_accept_conn_v4' ),
+    FailureEvent => 'p_accept_failed',
+    Reuse        => 1,
+  );
+
+  my $id = $wheel->ID;
+
+  my $listener = $self->__backend_listener_class->new(
+    protocol => $protocol,
+    wheel => $wheel,
+    addr  => $bindaddr,
+    port  => $bindport,
+    idle_allowed => $idle_allowed,
+    ssl   => $ssl,
+  ) or confess "Could not create new() ".$self->__backend_listener_class;
+
+  $self->listeners->{$id} = $listener;
+
+  my ($proto, $addr, $port) = get_unpacked_addr($wheel->getsockname);
+  $listener->set_port($port) if $port;
+
+  $poe_kernel->post( $self->controller, 'mud_listener_created', $listener )
+}
+
+sub p_remove_listener {
+  my $self = $_[OBJECT];
+  my %args = @_[ARG0 .. $#_];
+  $args{lc $_} = delete $args{$_} for keys %args;
+
+  if (defined $args{listener} && $self->listeners->{ $args{listener} }) {
+    my $listener = delete $self->listeners->{ $args{listener} };
+    $listener->clear_wheel;
+
+    $poe_kernel->post( $self->controller,
+      'mud_listener_removed', $listener
+    );
+
+    return
+  }
+
+  if (defined $args{addr} && defined $args{port}) {
+    for my $id (keys %{ $self->listeners }) {
+      my $listener = $self->listeners->{$id};
+
+      if ($args{port} == $listener->port
+        && $args{addr} eq $listener->addr) {
+          delete $self->listeners->{$id};
+          $listener->clear_wheel;
+
+          $poe_kernel->post( $self->controller,
+            'mud_listener_removed', $listener
+          )
+      }
+    }
+    return
+  }
+
+  if (defined $args{port}) {
+    PORT: for my $id (keys %{ $self->listeners }) {
+      my $listener = $self->listeners->{$id};
+
+      if ($args{port} == $listener->port) {
+        delete $self->listeners->{$id};
+        $listener->clear_wheel;
+
+        $poe_kernel->post( $self->controller,
+          'mud_listener_removed', $listener
+        )
+      }
+    }
+    return
+  }
+
+  if (defined $args{addr}) {
+    ADDR: for my $id (keys %{ $self->listeners }) {
+      my $listener = $self->listeners->{$id};
+      if ($args{addr} eq $listener->addr) {
+        delete $self->listeners->{$id};
+        $listener->clear_wheel;
+        $poe_kernel->post( $self->controller,
+          'mud_listener_removed', $listener
+        )
+      }
+    }
+    return
+  }
+}
+
+sub p_accept_failed {
+  my $self = $_[OBJECT];
+  my ($op, $errnum, $errstr, $listener_id) = @_[ARG0 .. ARG3];
+  my $listener = delete $self->listeners->{$listener_id};
+  if ($listener) {
+    $listener->clear_wheel;
+    $poe_kernel->post( $self->controller,
+      'mud_listener_failed',
+      $listener, $op, $errnum, $errstr
+    );
+  }
+}
 
 sub p_accept_conn {
   my $self = $_[OBJECT];
@@ -199,10 +327,45 @@ sub p_accept_conn {
     $poe_kernel->delay_set( 'p_idle_alarm', $user->idle_allowed, $w_id )
   );
 
-  $poe_kernel->post( $self->controller, 'mud_listener_open', $user );
+  $poe_kernel->post( $self->controller, 'mud_user_connected', $user );
 }
 
-sub p_idle_alarm {}
-sub p_sock_input {}
-sub p_sock_error {}
-sub p_sock_flushed {}
+sub p_idle_alarm {
+  my $self = $_[OBJECT];
+  my $w_id = $_[ARG0];
+  my $this_user = $self->users->{$w_id} || return;
+
+  $poe_kernel->post( $self->controller,
+    'mud_connection_idle',
+    $this_user
+  );
+
+  $this_user->alarm_id(
+    $poe_kernel->delay_set( 'p_idle_alarm', $user->idle_allowed, $w_id )
+  );
+}
+
+sub p_sock_input {
+  my $self = $_[OBJECT];
+  my ($input, $w_id) = @_[ARG0, ARG1];
+  my $this_user = $self->users->{$w_id} || return;
+
+  $this_user->seen( time );
+  $poe_kernel->delay_adjust( $this_user->alarm_id, $this_user->idle_allowed )
+    if $this_user->has_alarm_id;
+
+  ## FIXME do something with line input ...
+}
+
+sub p_sock_error {
+  my $self = $_[OBJECT];
+  my ($errstr, $w_id) = @_[ARG2, ARG3];
+  my $this_conn = $self->users->{$w_id} || return;
+  ## FIXME call disconnect/cleanup method
+}
+
+sub p_sock_flushed {
+  my ($self, $w_id) = @_[OBJECT, ARG0];
+
+  return
+}
