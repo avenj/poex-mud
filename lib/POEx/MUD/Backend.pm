@@ -31,6 +31,8 @@ use POE qw/
 use Socket qw/
   AF_INET AF_INET6
   inet_ntop
+  unpack_sockaddr_in
+  unpack_sockaddr_in6
 /;
 
 
@@ -158,13 +160,13 @@ sub p_shutdown {
 
 sub send {
   my $self = shift;
-  $poe_kernel->call( $self->session_id, 'send', @_ )
+  $poe_kernel->call( $self->session_id, 'send', @_ );
   1
 }
 
 sub p_send {
   my ($self, $to, @out) = @_[OBJECT, ARG0 .. $#_];
-  $self->users->{$to}->wheel->put($out)
+  $self->users->{$to}->wheel->put($_) for @out;
 }
 
 sub p_create_listener {
@@ -177,7 +179,7 @@ sub p_create_listener {
   my $bindport     = delete $args{port} || 0;
 
   my $proto = 4;
-  $proto = 5 if delete $args{ipv6} or ip_is_ipv6($bindaddr);
+  $proto = 6 if delete $args{ipv6} or ip_is_ipv6($bindaddr);
 
   my $ssl = delete $args{ssl} || 0;
 
@@ -194,7 +196,7 @@ sub p_create_listener {
   my $id = $wheel->ID;
 
   my $listener = $self->__backend_listener_class->new(
-    protocol => $protocol,
+    protocol => $proto,
     wheel => $wheel,
     addr  => $bindaddr,
     port  => $bindport,
@@ -204,7 +206,11 @@ sub p_create_listener {
 
   $self->listeners->{$id} = $listener;
 
-  my ($proto, $addr, $port) = get_unpacked_addr($wheel->getsockname);
+  my ($addr, $port) = (  $proto == 4 ?
+      ( unpack_sockaddr_in($wheel->getsockname) )
+      : ( unpack_sockaddr_in6($wheel->getsockname) )
+  );
+
   $listener->set_port($port) if $port;
 
   $poe_kernel->post( $self->controller, 'mud_listener_created', $listener )
@@ -291,14 +297,23 @@ sub p_accept_conn {
   my $self = $_[OBJECT];
   my ($sock, $p_addr, $p_port, $listener_id) = @_[ARG0 .. ARG3];
 
-  my $type;
+  my ($type, $proto);
+  if ($_[STATE] eq '_accept_conn_v6') {
+    $type  = AF_INET6;
+    $proto = 6;
+  } else {
+    $type  = AF_INET;
+    $proto = 4;
+  }
 
-  my $type   = $_[STATE] eq '_accept_conn_v6' ? AF_INET6 : AF_INET ;
-  my $p_addr = inet_ntop( $type, $p_addr );
+  $p_addr = inet_ntop( $type, $p_addr );
 
   my $sock_pack = getsockname($sock);
-  ## FIXME
-  my ($proto, $sockaddr, $sockport) = get_unpacked_addr($sock_pack);
+  my ($sockaddr, $sockport) = ( $proto == 4 ?
+     ( unpack_sockaddr_in($sock_pack) )
+     : ( unpack_sockaddr_in6($sock_pack) )
+  );
+
   my $listener = $self->listeners->{$listener_id};
   my $wheel = POE::Wheel::ReadWrite->new(
     Handle => $sock,
@@ -344,7 +359,10 @@ sub p_idle_alarm {
   );
 
   $this_user->alarm_id(
-    $poe_kernel->delay_set( 'p_idle_alarm', $user->idle_allowed, $w_id )
+    $poe_kernel->delay_set( 'p_idle_alarm', 
+      $this_user->idle_allowed,
+      $w_id 
+    )
   );
 }
 
