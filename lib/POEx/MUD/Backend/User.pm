@@ -77,3 +77,6 @@ has wheel => (
     $self->_set_wheel_id( $wheel->ID )
   },
 );
+
+
+1;

@@ -5,12 +5,17 @@ use strictures 1;
 use Carp;
 use Moo;
 
+use Scalar::Util 'blessed';
+
 use overload
   'bool'   => sub { 1 },
   '""'     => 'id',
   fallback => 1;
 
 ## A Room belongs to a Map.
+
+use namespace::clean;
+
 
 has adjoining => (
   ## HashRef: $direction -> $room_id
@@ -39,35 +44,68 @@ has id => (
 );
 
 has mobiles => (
-  ## FIXME set of Mobile objects present in this room?
+  lazy      => 1,
+  is        => 'ro',
+  isa       => HashRef,
+  writer    => '_set_mobiles',
+  predicate => '_has_mobiles',
+  default   => sub { {} },
+);
+
+has present_users => (
+  lazy      => 1,
+  is        => 'ro',
+  isa       => HashRef,
+  writer    => '_set_present_users',
+  predicate => '_has_present_users',
+  default   => sub { {} },
 );
 
 
+sub add_adjoining {
+  my ($self, $direction, $room_id) = @_;
+  $room_id = blessed $room_id ? $room_id->id : $room_id ;
+  $self->adjoining->{$direction} = $room_id
+}
 
-sub next_in_direction {
+sub del_adjoining {
+  my ($self, $direction) = @_;
+  delete $self->adjoining->{$direction}
+}
+
+sub next_id_in_direction {
   my ($self, $direction) = @_;
   $self->adjoining->{$direction}
 }
 
 
+sub description_as_string {
+  my ($self) = @_;
+  join "\n", @{ $self->description }
+}
+
+
 sub add_mobile {
   my ($self, $mobile_obj) = @_;
-  ## FIXME
+  confess "Expected a POEx::MUD::Mobile"
+    unless blessed $mobile_obj and $mobile_obj->isa('POEx::MUD::Mobile');
+  $self->mobiles->{ $mobile_obj->id } = $mobile_obj
 }
 
 sub del_mobile {
   my ($self, $mobile_id) = @_;
-  ## FIXME
+  delete $self->mobiles->{ $mobile_obj->id }
 }
 
 sub add_user {
   my ($self, $user_obj) = @_;
-  ## FIXME
+  ## FIXME Character obj?
+  $self->present_users->{ $user_obj->id } = $user_obj
 }
 
 sub del_user {
   my ($self, $user_id) = @_;
-  ## FIXME
+  delete $self->present_users->{ $user_obj->id }
 }
 
 1;

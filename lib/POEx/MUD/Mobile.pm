@@ -20,6 +20,10 @@ has name => (
   predicate => 'has_name',
 );
 
+has id => (
+  ## FIXME generate unique IDs as-needed?
+);
+
 has is_reactive => (
   ## FIXME need a clever way to handle mobile reactions
   is  => rw,
