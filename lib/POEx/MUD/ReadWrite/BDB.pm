@@ -2,13 +2,15 @@ package POEx::MUD::ReadWrite::BDB;
 use 5.10.1;
 use strictures 1;
 
+## BDB-cache backend for really huge worlds.
+
 use Carp;
 use Moo;
 
 use DB_File;
 use Fcntl qw/:DEFAULT :flock/;
 use IO::File;
-use Storable;
+use Storable qw/nfreeze nthaw/;
 use Time::HiRes 'sleep';
 
 
@@ -128,24 +130,30 @@ sub bdb_keys {
 }
 
 sub bdb_fetch {
-
+  my ($self, $key) = @_;
+  $self->tied->{$key}
 }
 
 sub bdb_put {
-
+  my ($self, $key, $value) = @_;
+  $self->tied->{$key} = $value
 }
 
 sub bdb_delete {
-
+  my ($self, $key) = @_;
+  return unless exists $self->tied->{$key};
+  delete $self->tied->{$key}
 }
 
 sub bdb_dump {
-
+  my ($self) = @_;
+  require Data::Dumper;
+  Data::Dumper::Dump( $self->tied )
 }
 
-## FIXME
-##  dump via Storable
-##  use db locking logic from Bot::Cobalt::DB
-
+sub DESTROY {
+  my ($self) = @_;
+  $self->bdb_close if $self->has_tied
+}
 
 1;
