@@ -120,7 +120,7 @@ sub bdb_open {
   my $ti = 0;
   my $timeout = $self->timeout;
   until ( flock $fh, $lflags ) {
-    if ($ti >= $timeout) {
+    if ($ti > $timeout) {
       carp "lock timed out trying to open ".$self->file
         unless $self->quiet;
       undef $orig; undef $fh; untie %{ $self->_orig };
