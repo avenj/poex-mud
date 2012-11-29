@@ -141,7 +141,7 @@ sub bdb_open {
   $db->filter_fetch_value(sub { $self->thaw($_) });
   $db->filter_store_value(sub { $self->nfreeze($_) });
 
-  1
+  $self
 }
 
 sub bdb_close {
@@ -195,7 +195,7 @@ sub bdb_dump {
 
 sub is_open {
   my ($self) = @_;
-  return 1 if $self->has_tied and tied %{ $self->tied };
+  return $self if $self->has_tied and tied %{ $self->tied };
   return
 }
 

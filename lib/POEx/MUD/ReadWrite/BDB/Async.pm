@@ -19,8 +19,9 @@ has 'retry' => (
 );
 
 has 'error_event' => (
-  is => 'ro',
-  writer => 'set_error_event',
+  ## Either a callback or sender event name.
+  is      => 'ro',
+  writer  => 'set_error_event',
   default => sub {
     return sub {
       my ($kern, $self) = @_[KERNEL, OBJECT];
@@ -39,6 +40,7 @@ sub send_error_event {
 sub spawn {
   my ($self) = @_;
 
+  ## Non-blocking bdb_open():
   $self->set_timeout(0);
 
   push @{ $self->object_states },
@@ -221,8 +223,31 @@ POEx::MUD::ReadWrite::BDB::Async - Callbacky ReadWrite::BDB subclass
     },
   );
 
+  $poe_kernel->post( $db->session_id,
+    'put',
+    $key,
+    $ref,
+    sub {
+      my ($kern, $asyncdb) = @_[KERNEL, OBJECT];
+      my ($key, $value)    = @_[ARG0, ARG1];
+
+      . . .
+
+    },
+  );
+
+  $poe_kernel->post( $db->session_id,
+    'del',
+    $key,
+    ## A named event/state handled in sender is also valid:
+    'db_key_deleted'
+  );
+
   ## Object interface:
   $db->async_get($key, $callback);
+  $db->async_put($key, $value, $callback);
+  $db->async_keys($callback);
+  $db->async_del($key, $callback);
 
   ## Optionally set up an error callback:
   $db->set_error_event( sub {
@@ -232,6 +257,9 @@ POEx::MUD::ReadWrite::BDB::Async - Callbacky ReadWrite::BDB subclass
     . . .
 
   } );
+
+  ## Optionally limit lock/open retries:
+  $db->set_retry(200);
 
 =head1 DESCRIPTION
 
