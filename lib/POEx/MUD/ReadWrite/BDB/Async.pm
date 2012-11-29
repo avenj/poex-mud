@@ -57,6 +57,8 @@ sub spawn {
   ;
 
   $self->_start_emitter;
+
+  $self
 }
 
 sub shutdown {
@@ -86,6 +88,7 @@ sub bdb_try_open {
 sub async_get {
   my ($self, $key, $cb) = @_;
   $self->yield( get => $key, $cb );
+  $self
 }
 
 sub _dbfetch {
@@ -114,6 +117,7 @@ sub _dbfetch {
 sub async_put {
   my ($self, $key, $value, $cb) = @_;
   $self->yield( put => $key, $value, $cb );
+  $self
 }
 
 sub _dbstore {
@@ -141,6 +145,7 @@ sub _dbstore {
 sub async_del {
   my ($self, $key, $cb) = @_;
   $self->yield( delete => $key );
+  $self
 }
 
 sub _dbdel {
@@ -168,7 +173,8 @@ sub _dbdel {
 
 sub async_keys {
   my ($self) = @_;
-  $self->yield( 'keys' )
+  $self->yield( 'keys' );
+  $self
 }
 
 sub _dbkeys {
@@ -215,8 +221,8 @@ POEx::MUD::ReadWrite::BDB::Async - Callbacky ReadWrite::BDB subclass
     $key,
     ## Result callback for this fetch:
     sub {
-      my ($kern, $asyncdb) = @_[KERNEL, OBJECT];
-      my ($key, $value)    = @_[ARG0, ARG1];
+      my ($kern, $asyncdb)    = @_[KERNEL, OBJECT];
+      my ($got_key, $got_val) = @_[ARG0, ARG1];
 
       . . .
 
@@ -228,8 +234,9 @@ POEx::MUD::ReadWrite::BDB::Async - Callbacky ReadWrite::BDB subclass
     $key,
     $ref,
     sub {
-      my ($kern, $asyncdb) = @_[KERNEL, OBJECT];
-      my ($key, $value)    = @_[ARG0, ARG1];
+      my ($kern, $asyncdb)    = @_[KERNEL, OBJECT];
+      ## These are the values that were ->bdb_put():
+      my ($put_key, $put_val) = @_[ARG0, ARG1];
 
       . . .
 
@@ -248,6 +255,15 @@ POEx::MUD::ReadWrite::BDB::Async - Callbacky ReadWrite::BDB subclass
   $db->async_put($key, $value, $callback);
   $db->async_keys($callback);
   $db->async_del($key, $callback);
+  ## .. these are chainable:
+  $db->async_put($key, $value)->async_get($key, $value,
+    sub {
+      my ($got_key, $got_val) = @_[ARG0, ARG1];
+      if ($got_val ne $value) {
+        ## My database is wonky!
+      }
+    },
+  );
 
   ## Optionally set up an error callback:
   $db->set_error_event( sub {
@@ -264,6 +280,10 @@ POEx::MUD::ReadWrite::BDB::Async - Callbacky ReadWrite::BDB subclass
 =head1 DESCRIPTION
 
 A nonblocking way to use locking L<POEx::MUD::ReadWrite::BDB> databases.
+
+This is a subclass of L<POEx::MUD::ReadWrite::BDB>, so the blocking 
+interface documented there can also be accessed, if needed (you'll want to 
+bdb_close() immediately after completing a blocking bdb_open(), of course).
 
 FIXME
 
