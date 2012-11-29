@@ -61,6 +61,25 @@ has present_users => (
   default   => sub { {} },
 );
 
+sub from_file {
+  my ($class, %params) = @_;
+  my $path;
+  confess "from_file() requires a file parameter"
+    unless $path = $params{file};
+
+  require POEx::MUD::ReadWrite;
+  my $loaded = POEx::MUD::ReadWrite->new('YAML')->thaw_file($path);
+  $self->validate_loaded_file($loaded);
+
+  ## FIXME set up params from validated ref
+
+  $class->new(%params)
+}
+
+sub validate_loaded_file {
+  my ($self, $loaded) = @_;
+  ## FIXME
+}
 
 sub add_adjoining {
   my ($self, $direction, $room_id) = @_;

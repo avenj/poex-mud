@@ -1,0 +1,7 @@
+---
+name: "a sharp knife"
+base: "weapon.base"
+stats:
+  attack: "+4"
+  ## Should derive "defend: +1"
+desc: "A small, sharp knife."

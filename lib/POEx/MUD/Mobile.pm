@@ -7,6 +7,7 @@ use Moo;
 
 use POEx::MUD qw/
   Tools::Format
+  Tools::UID
   Types
 /;
 
@@ -21,7 +22,8 @@ has name => (
 );
 
 has id => (
-  ## FIXME generate unique IDs as-needed?
+  ## FIXME
+  default => sub { POEx::MUD::Tools::UID->id }
 );
 
 has is_reactive => (

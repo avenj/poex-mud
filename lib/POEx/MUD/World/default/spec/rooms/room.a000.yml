@@ -1,0 +1,9 @@
+---
+name: "The Lair"
+id: "a000"
+externally_visible: 1
+adjoins:
+  down: "a001"
+description: |
+ You seem to have entered some sort of dark lair.
+ The only exit is a ladder leading downwards.
