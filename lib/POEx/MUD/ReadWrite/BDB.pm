@@ -2,28 +2,48 @@ package POEx::MUD::ReadWrite::BDB;
 use 5.10.1;
 use strictures 1;
 
-## BDB-cache backend for really huge worlds.
+## BDB backend
+## Mostly intended as cache for really huge worlds.
 
 use Carp;
 use Moo;
 
+extends 'POEx::MUD::ReadWrite';
+
+
 use DB_File;
 use Fcntl qw/:DEFAULT :flock/;
 use IO::File;
-use Storable qw/nfreeze nthaw/;
+use Storable ();
 use Time::HiRes 'sleep';
 
 
 use namespace::clean;
 
-has file    => ()
 
-has perms   => ()
+has file    => (
+  required => 1,
+  is       => 'ro',
+);
 
-has timeout => ()
+has perms   => (
+  is      => 'ro',
+  writer  => 'set_perms',
+  default => sub { 0644 },
+);
+
+has timeout => (
+  is      => 'ro',
+  writer  => 'set_timeout',
+  default => sub { 5 },
+);
 
 # Skip timeout notification:
-has quiet => ()
+has quiet => (
+  is      => 'ro',
+  writer  => 'set_quiet',
+  default => sub { 0 },
+);
 
 has tied    => (
   init_arg  => undef,
@@ -31,7 +51,7 @@ has tied    => (
   predicate => 'has_tied',
   writer    => '_set_tied',
   clearer   => '_clear_tied',
-  default   => { {} },
+  default   => sub { {} },
 );
 
 has _orig   => (
@@ -40,20 +60,29 @@ has _orig   => (
   predicate => '_has_orig',
   writer    => '_set_orig',
   clearer   => '_clear_orig',
-  default   => { {} },
+  default   => sub { {} },
 );
 
 has _lockfh => (
-  writer => '_set_lockfh',
+  lazy    => 1,
+  is      => 'ro',
+  writer  => '_set_lockfh',
+  clearer => '_clear_lockfh',
 );
 
 has _lockm  => (
-  writer => '_set_lockm',
+  lazy    => 1,
+  is      => 'ro',
+  writer  => '_set_lockm',
+  clearer => '_clear_lockm',
 );
 
 has bdb     => (
+  lazy      => 1,
+  is        => 'ro',
   predicate => 'has_bdb',
   writer    => '_set_bdb',
+  clearer   => '_clear_bdb',
 );
 
 sub BUILDARGS {
@@ -64,7 +93,7 @@ sub BUILDARGS {
 sub bdb_open {
   my ($self, %args) = @_;
 
-  if ( $self->has_tied ) {
+  if ( $self->is_open ) {
     carp "bdb_open() on previously open db ".$self->file;
     return
   }
@@ -109,51 +138,81 @@ sub bdb_open {
   $self->_set_bdb($db);
   undef $orig;
 
-  ## FIXME install filters
+  $db->filter_fetch_value(sub { $self->thaw($_) });
+  $db->filter_store_value(sub { $self->nfreeze($_) });
 
   1
 }
 
 sub bdb_close {
   my ($self) = @_;
-  return unless $self->has_tied;
+  return unless $self->is_open;
 
-  ## FIXME
+  $self->bdb->sync if $self->_lockm == LOCK_EX;
 
-  $self->_clear_tied;
+  untie %{ $self->tied } or carp "bdb_close: untie: $!";
+  flock( $self->_lockfh, LOCK_UN ) or carp "bdb_close: unlock: $!";
+
+  $self->_clear_bdb;
+  $self->_set_tied({});
+  $self->_clear_lockfh;
+  $self->_clear_lockm;
+
+  1
 }
 
 sub bdb_keys {
   my ($self) = @_;
-  return unless $self->has_tied;
+  return unless $self->is_open;
   keys %{ $self->tied }
 }
 
 sub bdb_fetch {
   my ($self, $key) = @_;
+  return unless $self->is_open;
   $self->tied->{$key}
 }
 
 sub bdb_put {
   my ($self, $key, $value) = @_;
+  return unless $self->is_open;
   $self->tied->{$key} = $value
 }
 
 sub bdb_delete {
   my ($self, $key) = @_;
+  return unless $self->is_open;
   return unless exists $self->tied->{$key};
   delete $self->tied->{$key}
 }
 
 sub bdb_dump {
   my ($self) = @_;
+  return unless $self->is_open;
   require Data::Dumper;
   Data::Dumper::Dump( $self->tied )
 }
 
+sub is_open {
+  my ($self) = @_;
+  return 1 if $self->has_tied and tied %{ $self->tied };
+  return
+}
+
 sub DESTROY {
   my ($self) = @_;
-  $self->bdb_close if $self->has_tied
+  $self->bdb_close if $self->is_open
+}
+
+
+sub freeze {
+  my ($self, $data) = @_;
+  Storable::nfreeze($data)
+}
+
+sub thaw {
+  my ($self, $data) = @_;
+  Storable::thaw($data)
 }
 
 1;
