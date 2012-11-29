@@ -51,7 +51,6 @@ sub spawn {
     },
     $self => [
       bdb_try_open
-      bdb_db_open
     ],
   ;
 
@@ -67,10 +66,12 @@ sub shutdown {
 sub bdb_try_open {
   my ($kern, $self) = @_[KERNEL, OBJECT];
   my ($type, $cb, $args, $tried)   = @_[ARG0 .. $#_];
+  $args ||= [];
 
   ++$tried;
   if ( $self->bdb_open ) {
-    $self->yield( 'bdb_db_open', $cb, @$args )
+    $self->call( $cb, @$args);
+    $self->bdb_close;
   } else {
     if ($self->retry and $tried > $self->retry) {
       $self->send_error_event( 'try_open', 'exceeded maximum lock retries' );
@@ -78,12 +79,6 @@ sub bdb_try_open {
     }
     $self->yield( 'bdb_try_open', $type, $cb, $args, $tried )
   }
-}
-
-sub bdb_db_open {
-  my ($kern, $self) = @_[KERNEL, OBJECT];
-  my ($cb, @args)   = @_[ARG0 .. $#_];
-  $self->call( $cb, @args )
 }
 
 sub async_get {
@@ -196,3 +191,56 @@ sub _dbkeys {
 }
 
 1;
+
+
+=pod
+
+=head1 NAME
+
+POEx::MUD::ReadWrite::BDB::Async - Callbacky ReadWrite::BDB subclass
+
+=head1 SYNOPSIS
+
+  use POE;
+  ## In a POE session:
+  my $db = POEx::MUD::ReadWrite::BDB::Async->new(
+    file => $path,
+  );
+
+  ## POE interface:
+  $poe_kernel->post( $db->session_id,
+    'get',
+    $key,
+    ## Result callback for this fetch:
+    sub {
+      my ($kern, $asyncdb) = @_[KERNEL, OBJECT];
+      my ($key, $value)    = @_[ARG0, ARG1];
+
+      . . .
+
+    },
+  );
+
+  ## Object interface:
+  $db->async_get($key, $callback);
+
+  ## Optionally set up an error callback:
+  $db->set_error_event( sub {
+    my ($kern, $asyncdb) = @_[KERNEL, OBJECT];
+    my ($method, $error) = @_[ARG0, ARG1];
+
+    . . .
+
+  } );
+
+=head1 DESCRIPTION
+
+A nonblocking way to use locking L<POEx::MUD::ReadWrite::BDB> databases.
+
+FIXME
+
+=head1 AUTHOR
+
+Jon Portnoy <avenj@cobaltirc.org>
+
+=cut
