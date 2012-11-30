@@ -12,6 +12,10 @@ Module::Build->subclass(
   create_readme      => 1,
   create_makefile_pl => 'small',
 
+  configure_requires => {
+    'Module::Build' => '0.40',
+  },
+
   build_requires => {
   },
   
@@ -35,4 +39,11 @@ Module::Build->subclass(
 
     POE    => '1.3',
   },
+
+  meta_merge => {
+    resources => {
+      repository => 'http://github.com/avenj/poex-mud.git',
+    },
+  },
+
 )->create_build_script;
