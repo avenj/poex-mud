@@ -7,6 +7,8 @@ use Moo;
 
 use namespace::clean -except => 'meta';
 
+with 'POEx::MUD::World::Role::LoadFromFile';
+
 has rooms => (
   ## Keyed on room ID
   required  => 1,
@@ -15,6 +17,12 @@ has rooms => (
   writer    => 'set_rooms',
   predicate => 'has_rooms',
 );
+
+
+sub validate_loaded_file {
+  my ($self, $loaded, $params) = @_;
+  ## FIXME
+}
 
 sub add_room {
   my ($self, $room_obj) = @_;
