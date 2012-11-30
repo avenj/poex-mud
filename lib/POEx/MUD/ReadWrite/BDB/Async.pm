@@ -52,7 +52,7 @@ sub spawn {
       keys   => '_dbkeys',
     },
     $self => [
-      bdb_try_open
+      'bdb_try_open'
     ],
   ;
 
@@ -102,9 +102,9 @@ sub _dbfetch {
 
       if (ref $cb eq 'CODE') {
         $self->yield( $cb, $key, $value )
-      } else {
+      } elsif ($cb) {
         $kern->post( $sender,
-          ($cb || 'bdb_got_result'),
+          $cb,
           $key,
           $value 
         );
@@ -131,9 +131,9 @@ sub _dbstore {
 
       if (ref $cb eq 'CODE') {
         $self->yield( $cb, $key, $value )
-      } else {
+      } elsif ($cb) {
         $kern->post( $sender,
-          ($cb || 'bdb_wrote_value'),
+          $cb,
           $key,
           $value
         );
@@ -159,9 +159,9 @@ sub _dbdel {
 
       if (ref $cb eq 'CODE') {
         $self->yield( $cb, $key, $value )
-      } else {
+      } elsif ($cb) {
         $kern->post( $sender,
-          ($cb || 'bdb_deleted_value'),
+          $cb,
           $key,
           $value
         );
@@ -188,9 +188,9 @@ sub _dbkeys {
 
       if (ref $cb eq 'CODE') {
         $self->yield( $cb, \@keys )
-      } else {
+      } elsif ($cb) {
         $kern->post( $sender,
-          ($cb || 'bdb_keys'),
+          $cb,
           \@keys
         );
       }
@@ -279,13 +279,70 @@ POEx::MUD::ReadWrite::BDB::Async - Callbacky ReadWrite::BDB subclass
 
 =head1 DESCRIPTION
 
-A nonblocking way to use locking L<POEx::MUD::ReadWrite::BDB> databases.
+A nonblocking way to use locking L<POEx::MUD::ReadWrite::BDB> databases; 
+operations are executed when a lock can be acquired.
 
 This is a subclass of L<POEx::MUD::ReadWrite::BDB>, so the blocking 
 interface documented there can also be accessed, if needed (you'll want to 
 bdb_close() immediately after completing a blocking bdb_open(), of course).
 
-FIXME
+This class consumes L<MooX::Role::POE::Emitter> -- methods found there also 
+apply. No events are emitted by default, but can be sent from a callback; 
+see L</Callbacks>.
+
+=head2 Settings
+
+=head3 set_error_event
+
+Sets either a callback coderef (see L</Callbacks>) or a named event/state 
+defined in the L<POE::Session> that posted the original request. See 
+L</SYNOPSIS>.
+
+By default, a C<warn()> is issued.
+
+=head3 set_retry
+
+Sets the number of times an open attempt will try to gain a lock before 
+giving up permanently (and throwing an error_event; see 
+L</set_error_event>).
+
+=head2 Callbacks
+
+When operations complete, they issue a result via either POE event post to 
+a specified named event/state handled by the sender's session, or a 
+code reference callback.
+
+These callbacks/events are specified when the operation is issued; they 
+work the same regardless of whether you are using the L</OO interface> or 
+L</POE interface> (documented below).
+
+Code reference callbacks are executed within the context of the 
+L<POE::Session> belonging to the BDB::Async instance; in other words, 
+inside a code reference callback $_[OBJECT] is the BDB::Async instance.
+
+Except for L</keys> / L</async_keys>, callbacks receive the key and value 
+that was fetched / put / deleted as $_[ARG0] & $_[ARG1] respectively.
+
+=head2 OO interface
+
+=head3 async_get
+
+=head3 async_put
+
+=head3 async_del
+
+=head3 async_keys
+
+
+=head2 POE interface
+
+=head3 get
+
+=head3 put
+
+=head3 del
+
+=head3 keys
 
 =head1 AUTHOR
 

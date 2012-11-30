@@ -3,12 +3,13 @@ package POEx::MUD::ReadWrite::YAML;
 ## The standard reader/writer for rooms, world objects, etc.
 
 use 5.12.1;
-use Moo;
-
-extends 'POEx::MUD::ReadWrite';
-
+use Carp;
 use Try::Tiny;
 use YAML::Tiny;
+
+use Moo;
+with 'POEx::MUD::ReadWrite::Interface';
+
 
 use namespace::clean;
 

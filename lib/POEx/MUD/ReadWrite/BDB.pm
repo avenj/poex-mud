@@ -8,7 +8,7 @@ use strictures 1;
 use Carp;
 use Moo;
 
-extends 'POEx::MUD::ReadWrite';
+with 'POEx::MUD::ReadWrite::Interface';
 
 
 use DB_File;

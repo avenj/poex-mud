@@ -1,6 +1,8 @@
 package POEx::MUD;
 use strictures 1;
-use Carp;
+
+use Carp 'confess';
+use Module::Runtime 'use_module';
 
 sub import {
   my ($self, @modules) = @_;
@@ -24,6 +26,14 @@ sub import {
   1
 }
 
+sub create {
+  my ($class, $module) = splice @_, 0, 2;
+  confess "create() expects a module name and optional args"
+    unless $module;
+
+  my $real = 'POEx::MUD::'.$module;
+  use_module($real)->new(@_)
+}
 
 no warnings 'void';
 q[
