@@ -1,6 +1,8 @@
 package POEx::MUD::Tools::UID;
 use strictures 1;
 
+use Scalar::Util 'blessed';
+
 use overload
   bool => sub { 1 },
   '""' => 'id',
@@ -13,7 +15,7 @@ our $POEX_MUD_ID = 0;
 
 sub new {
   my ($class) = @_;
-  bless $class->can('id'), ref $class || $class
+  bless $class->can('id'), blessed($class) || $class
 }
 
 sub id {
