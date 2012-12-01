@@ -28,7 +28,7 @@ has map => (
 );
 
 
-sub BUILD {
+sub spawn {
   my ($self) = @_;
   $self->_start_emitter;
 }

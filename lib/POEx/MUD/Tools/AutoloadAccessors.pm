@@ -20,9 +20,8 @@ my $constructor = sub {
 our $AUTOLOAD;
 my $loader = sub {
   my ($self, $val) = @_;
-  my $subname = $AUTOLOAD;
-  return unless blessed $self and index($subname, 'DESTROY') == -1;
-  $subname = (split /::/, $subname)[-1];
+  my $subname = (split /::/, $AUTOLOAD)[-1];
+  return if index($subname, 'DESTROY') == 0;
 
   if (index($subname, 'has_') == 0) {
     ## Predicate.
@@ -46,9 +45,78 @@ sub import {
   my $pkg = caller;
   no strict 'refs';
   *{ $pkg .'::AUTOLOAD' } = $loader;
+  ## FIXME better solution for new()
   *{ $pkg .'::new' } = $constructor
     unless $pkg->can('new');
   1
 }
 
 1;
+
+=pod
+
+=head1 NAME
+
+POEx::MUD::Tools::AutoloadAccessors - Tiny class builder
+
+=head1 SYNOPSIS
+
+  package MyClass;
+  use POEx::MUD::Tools::AutoloadAccessors;
+  ## .. define methods, etc
+  ## Override new() to add attribs if needed
+  ## (it just needs to return a blessed hashref)
+
+  package Other;
+  ## Any attribs specified are read-write and have
+  ## a 'has_' prefixed predicate method:
+  my $obj = MyClass->new(
+    things => 1,
+    stuff  => 'meh',
+    hash   => {
+      objects => [],
+    },
+  );
+
+  my $stuff = $obj->stuff;   ## reader
+  $obj->stuff('and things'); ## writer
+  $obj->has_stuff;           ## predicate
+
+  ## Hashes are automatically blessed back into MyClass:
+  my $array = $obj->hash->objects
+    if $obj->hash->has_objects;
+
+=head1 DESCRIPTION
+
+A tiny class builder, sort of. This is the slow/deprecated approach to 
+accessor generation.
+
+Abuses AUTOLOAD to provide read-write accessors and predicate methods for 
+arbitrary attributes specified at construction time.
+
+A default B<new()> constructor is provided; it takes either a hash or a 
+reference to a hash mapping attributes to values. (If you'd like to 
+override it, define your own B<new()> that returns a blessed hash reference, 
+and call C<import()> on this module after blessing.)
+
+Hashes are automatically blessed back into the class, so this works:
+
+  my $obj = Class->new( things => { stuff => 1 } );
+  $obj->things->stuff;
+
+Calling B<new()> on the object works with the default constructor:
+
+  my $new_obj = Class->new(
+    new_attrib => $value,
+    ## Include previous attribs also:
+    %$obj
+  );
+
+This is used by L<POEx::MUD::Conf> to inflate configuration files into 
+objects.
+
+=head1 AUTHOR
+
+Jon Portnoy <avenj@cobaltirc.org>
+
+=cut
