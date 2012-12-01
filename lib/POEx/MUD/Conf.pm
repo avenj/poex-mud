@@ -2,13 +2,10 @@ package POEx::MUD::Conf;
 use Carp;
 use strictures 1;
 
-use Scalar::Util 'blessed';
 use POEx::MUD qw/
   Tools::AutoloadAccessors
   ReadWrite
 /;
-
-use namespace::clean;
 
 sub read_config_from {
   my ($self, $file) = @_;

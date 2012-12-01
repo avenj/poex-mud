@@ -1,4 +1,5 @@
 package POEx::MUD::Tools::AutoloadAccessors;
+use 5.10.1;
 use Carp;
 use strictures 1;
 
@@ -16,6 +17,7 @@ my $constructor = sub {
   $self
 };
 
+our $AUTOLOAD;
 my $loader = sub {
   my ($self, $val) = @_;
   my $subname = $AUTOLOAD;
