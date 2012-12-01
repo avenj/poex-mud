@@ -89,7 +89,8 @@ POEx::MUD::Tools::AutoloadAccessors - Tiny class builder
 =head1 DESCRIPTION
 
 A tiny class builder, sort of. This is the slow/deprecated approach to 
-accessor generation.
+accessor generation; it is used by L<POEx::MUD::Conf> to inflate 
+configuration files into objects and ought not be used for normal classes.
 
 Abuses AUTOLOAD to provide read-write accessors and predicate methods for 
 arbitrary attributes specified at construction time.
@@ -101,19 +102,36 @@ and call C<import()> on this module after blessing.)
 
 Hashes are automatically blessed back into the class, so this works:
 
-  my $obj = Class->new( things => { stuff => 1 } );
+  my $obj = MyClass->new( things => { stuff => 1 } );
   $obj->things->stuff;
 
 Calling B<new()> on the object works with the default constructor:
 
-  my $new_obj = Class->new(
+  my $new_obj = MyClass->new(
     new_attrib => $value,
     ## Include previous attribs also:
     %$obj
   );
 
-This is used by L<POEx::MUD::Conf> to inflate configuration files into 
-objects.
+You can override the default constructor with your own; it just needs to 
+return a blessed hashref:
+
+  package MyClass;
+  use POEx::MUD::Tools::AutoloadAccessors ();
+  sub new {
+    my $class = shift;
+    my $self = {
+      ## Add some precreated accessors with default values
+      abc  => '123',
+      nada => undef,
+      ## ...plus any specified:
+      @_
+    };
+
+    bless $self, $class;
+    POEx::MUD::Tools::AutoloadAccessors->import;
+    $self
+  }
 
 =head1 AUTHOR
 

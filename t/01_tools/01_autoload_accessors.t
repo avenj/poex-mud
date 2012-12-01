@@ -15,7 +15,6 @@ my $obj = TestAccessors->new(
   },
 );
 
-diag("Basic autoloaded accessor tests:");
 cmp_ok($obj->testing, '==', 1, 'Int');
 cmp_ok($obj->things, 'eq', 'stuff', 'Str');
 cmp_ok($obj->hash->stuff, 'eq', 'things', 'Autoinflation');
