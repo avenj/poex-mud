@@ -1,7 +1,7 @@
 package POEx::MUD::ReadWrite::Interface;
 use Carp 'confess';
 
-use Moo::Role;
+use Role::Tiny;
 
 requires qw/
   freeze

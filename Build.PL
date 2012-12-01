@@ -30,7 +30,7 @@ Module::Build->subclass(
     'namespace::clean' => '0.23',
 
     Moo                => 1,
-    'MooX::Types::MooseLike'   => 0,
+    'MooX::Types::MooseLike'   => '0.16',
     'MooX::Role::POE::Emitter' => '0.10',
 
     'Module::Runtime'  => 0,

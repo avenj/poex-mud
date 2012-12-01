@@ -22,7 +22,7 @@ sub read_config_from {
   my ($self, $file) = @_;
   confess "Expected a file path" unless defined $file;
 
-  my $cf = POEx::MUD::ReadWrite::YAML->thaw_file($file);
+  my $cf = POEx::MUD::ReadWrite->new('YAML')->thaw_file($file);
   $cf->{lc $_} = delete $cf->{$_} for keys %$cf;
 
   $self->__inflate_to_obj($cf) || $cf

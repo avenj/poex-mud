@@ -26,12 +26,12 @@ sub import {
   1
 }
 
-sub create {
-  my ($class, $module) = splice @_, 0, 2;
-  confess "create() expects a module name and optional args"
+sub new {
+  my (undef, $module) = splice @_, 0, 2;
+  confess "top-level new() expects a module name and optional args"
     unless $module;
 
-  my $real = 'POEx::MUD::'.$module;
+  my $real = __PACKAGE__ .'::'. $module;
   use_module($real)->new(@_)
 }
 
