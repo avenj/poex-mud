@@ -25,4 +25,13 @@ cmp_ok(
   'hashref templatef'
 );
 
+cmp_ok(
+  templatef( 'string with %code',
+    code => sub { "things" },
+  ),
+  'eq',
+  'string with things',
+  'coderef replacement'
+);
+
 done_testing;

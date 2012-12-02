@@ -28,7 +28,7 @@ has id => (
 
 has is_reactive => (
   ## FIXME need a clever way to handle mobile reactions
-  is  => rw,
+  is  => 'rw',
   isa => Bool,
   default => sub { 0 },
 );
@@ -53,8 +53,8 @@ has _description => (
 
 sub _build_description {
   [
-    '%name% doesn't look like much.'
-  ],
+    "%name% doesn't look like much.",
+  ]
 }
 
 sub get_description {
