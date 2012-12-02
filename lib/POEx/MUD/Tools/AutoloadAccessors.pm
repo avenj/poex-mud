@@ -23,6 +23,9 @@ my $loader = sub {
   my $subname = (split /::/, $AUTOLOAD)[-1];
   return if index($subname, 'DESTROY') == 0;
 
+  confess "No such subroutine $subname"
+    unless blessed $self;
+
   if (index($subname, 'has_') == 0) {
     ## Predicate.
     return exists $self->{ substr($subname, 4) } ? 1 : ()

@@ -4,10 +4,10 @@ use strictures 1;
 use Scalar::Util 'blessed';
 
 use overload
-  bool => sub { 1 },
-  '""' => 'id',
+  bool     => sub { 1 },
+  '""'     => 'id',
   ## Explicit but unnecessary given stringify:
-  '0+' => 'id',
+  '0+'     => 'id',
   fallback => 1,
 ;
 
@@ -46,6 +46,12 @@ POEx::MUD::Tools::UID - An always-increasing integer
 This is a unique ID intended for internal use; the class method B<id> 
 increments and returns an automatically incrementing global.
 
+These are obviously only good for the lifetime of the application.
+
 The class can produce overloaded objects representing the next integer.
+
+=head1 AUTHOR
+
+Jon Portnoy <avenj@cobaltirc.org>
 
 =cut
