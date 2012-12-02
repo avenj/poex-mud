@@ -4,14 +4,31 @@ use strictures 1;
 
 use Carp;
 use Moo;
+use POE;
 
 with 'MooX::Role::POE::Emitter';
 
 use namespace::clean -except => 'meta';
 
 has 'backend' => (
-  ## FIXME
+  lazy    => 1,
+  is      => 'ro',
+  isa     => sub {
+    blessed $_[0] and $_[0]->isa('POEx::MUD::Backend')
+    or confess "Expected a POEx::MUD::Backend, got $_[0]"
+  },
+  writer    => 'set_backend',
+  predicate => 'has_backend',
+  builder   => '_build_backend',
 );
+
+sub _build_backend {
+  my ($self) = @_;
+  require POEx::MUD::Backend;
+  POEx::MUD::Backend->new(
+    ## FIXME get config opts
+  );
+}
 
 sub BUILD {
   my ($self) = @_;
@@ -29,15 +46,15 @@ sub BUILD {
 
   $self->_start_emitter;
 
-  ## FIXME set up and start backend (backend builder, call from here?)
-  ## FIXME register with backend
+  $self->backend->spawn;
+  $poe_kernel->post( $self->backend->session_id, 'register' );
 }
 
 
 sub mud_backend_registered {
   my ($kernel, $self) = @_[KERNEL, OBJECT];
   my $backend = $_[ARG0];
-  $self->set_backend( $backend );
+  $self->set_backend( $backend ) unless $self->has_backend;
 }
 
 sub mud_input {
